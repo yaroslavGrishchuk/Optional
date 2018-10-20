@@ -11,22 +11,17 @@
 #include <cassert>
 
 template<class T>
-class optional {
-private:
-    typename std::aligned_storage<sizeof(T), alignof(T)>::type data;
-    bool full = false;
-public:
-
+struct optional {
     optional() = default;
 
     optional(T const &val) {
-        full = true;
-        new(reinterpret_cast<T *>(&data)) T(val);
+        is_big = true;
+        new(reinterpret_cast<T *>(&data_)) T(val);
     }
 
-    optional(optional const &other) : full(other.full) {
-        if (full) {
-            new(reinterpret_cast<T *>(&data)) T(*other);
+    optional(optional const &other) : is_big(other.is_big) {
+        if (is_big) {
+            new(reinterpret_cast<T *>(&data_)) T(*other);
         }
     }
 
@@ -41,55 +36,57 @@ public:
     }
 
     explicit operator bool() const {
-        return full;
+        return is_big;
     }
 
     void clear() {
-        if (full) {
-            reinterpret_cast<T *>(&data)->~T();
-            full = false;
+        if (is_big) {
+            reinterpret_cast<T *>(&data_)->~T();
+            is_big = false;
         }
     }
 
     void swap(optional &other) {
-        if (full && other.full) {
-            std::swap(*reinterpret_cast<T *>(&data), *reinterpret_cast<T *>(&other.data));
-            std::swap(full, other.full);
+        if (is_big && other.is_big) {
+            std::swap(*reinterpret_cast<T *>(&data_), *reinterpret_cast<T *>(&other.data_));
+            std::swap(is_big, other.is_big);
         }
-        else if (full){
-            new(reinterpret_cast<T *>(&other.data)) T(*(*this));
+        else if (is_big){
+            new(reinterpret_cast<T *>(&other.data_)) T(*(*this));
             this->clear();
-            other.full = 1;
+            other.is_big = 1;
         }
-        else if (other.full){
-            new(reinterpret_cast<T *>(&data)) T(*other);
+        else if (other.is_big){
+            new(reinterpret_cast<T *>(&data_)) T(*other);
             other.clear();
-            full = 1;
+            is_big = 1;
         }
     }
 
 
     T &operator*() {
-        assert(full);
-        return *reinterpret_cast<T *>(&data);
+        assert(is_big);
+        return *reinterpret_cast<T *>(&data_);
     }
 
     T const &operator* () const{
-        assert(full);
-        return *reinterpret_cast<T const *>(&data);
+        assert(is_big);
+        return *reinterpret_cast<T const *>(&data_);
     }
 
     T *operator->() {
-        assert(full);
-        return (reinterpret_cast<T *>(&data));
+        assert(is_big);
+        return (reinterpret_cast<T *>(&data_));
     }
 
     T const *operator->() const{
-        assert(full);
-        return (reinterpret_cast<T const *>(&data));
+        assert(is_big);
+        return (reinterpret_cast<T const *>(&data_));
     }
 
-
+private:
+    typename std::aligned_storage<sizeof(T), alignof(T)>::type data_;
+    bool is_big = false;
 
 };
 
